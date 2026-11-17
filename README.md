@@ -1,0 +1,1 @@
+# class-admin-mcp-test
