@@ -75,7 +75,7 @@ What each kind of user can do:
 | HTTP server | `axum` + `tower-http` (body limit, timeout, trace) | Hosts the rmcp service; auth middleware |
 | Rate limiting | `governor` (or `tower_governor`) | Per-IP / per-token / per-email limits |
 | Async runtime | `tokio` | Required by `rmcp` / `axum` |
-| Database | SQLite via `sqlx` (`sqlite`, `runtime-tokio`, `migrate`) | Async, compile-checked queries, built-in migrations |
+| Database | SQLite via `sqlx` (`sqlite`, `runtime-tokio`, `migrate`) | Async, bound parameters, built-in migrations |
 | Serialization / schemas | `serde`, `schemars` | Tool input/output JSON schemas |
 | Dates / time zones | `chrono`, `chrono-tz` | Times, dates, "upcoming" checks, IANA time zones |
 | Admin tokens | `jsonwebtoken` | HS256 JWTs |
@@ -127,13 +127,12 @@ src/
   auth/
     mod.rs         # Caller, require_admin
     jwt.rs         # HS256 issue + verify
-    revocation.rs  # denylist checks
   db/
     mod.rs         # pool setup, migrations, pragmas
     courses.rs
     classes.rs     # classes, sessions, spots-left query
     bookings.rs    # book (no overbooking), approve, reject, cancel, expire
-    revocations.rs
+    revocations.rs # revoked tokens / users
     audit.rs
   jobs.rs          # periodic expiry + data retention
   mcp/
@@ -526,7 +525,7 @@ The token comes from the admin's environment and never goes into git.
 - Client IPs come from `X-Forwarded-For` **only** when the request comes from
   `CLASS_ADMIN_TRUSTED_PROXY`.
 - Errors never reveal SQL, file paths or stack traces.
-- All SQL uses bound parameters (`sqlx` macros).
+- All SQL uses bound parameters; query text is built only from constants (`sql!` macro).
 - Admin JWTs: fixed algorithm, `exp`/`iss`/`aud` required, revocation checked per request.
 
 ### Public booking abuse
@@ -605,6 +604,17 @@ export CLASS_ADMIN_PUBLIC_URL=https://classes.example.com
 
 ---
 
-## 14. Open questions
+## 14. Status
 
-None. The plan is ready to build.
+Milestones 1–9 are done (see `README.md`). Notes on how the code differs from or extends this plan:
+
+- **Stateless HTTP:** the MCP transport runs without sessions (`legacy_session_mode = false`),
+  so every request is authenticated on its own.
+- **Host check:** requests are accepted only for `localhost` / `127.0.0.1` and the host of
+  `CLASS_ADMIN_PUBLIC_URL` (DNS-rebinding protection built into `rmcp`).
+- **Origin check:** with no `CLASS_ADMIN_ALLOWED_ORIGINS`, any request carrying an `Origin`
+  header is refused; AI agents and CLI clients don't send one.
+- **Failed logins:** limited per IP by `CLASS_ADMIN_RATE_LIMIT_AUTH_FAIL` (default `10/min`).
+- **Token lifetime:** at most 90 days (`token issue --days`).
+- **Queries** use runtime `sqlx::query` with `.bind()` rather than compile-time checked macros,
+  so building needs no database.
