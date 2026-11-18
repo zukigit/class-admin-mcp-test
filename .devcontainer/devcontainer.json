@@ -1,6 +1,6 @@
 {
-  "name": "rhel9-dev",
-  "image": "docker.io/zukidocker/ubi10:cargo",
+  "name": "rhel10-dev",
+  "image": "docker.io/zukidocker/everything:rhel10",
   "remoteUser": "zuki",
 
   "forwardPorts": [8080],
