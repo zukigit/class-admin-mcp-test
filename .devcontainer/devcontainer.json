@@ -3,6 +3,14 @@
   "image": "docker.io/zukidocker/ubi10:cargo",
   "remoteUser": "zuki",
 
+  "forwardPorts": [8080],
+  "portsAttributes": {
+    "8080": {
+      "label": "class-admin MCP",
+      "onAutoForward": "notify"
+    }
+  },
+
   "mounts": [
     "source=${localEnv:HOME}/.ssh,target=/home/zuki/.ssh,type=bind,readonly",
     "source=${localEnv:HOME}/.gitconfig,target=/home/zuki/.gitconfig,type=bind",
