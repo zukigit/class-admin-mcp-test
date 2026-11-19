@@ -25,8 +25,13 @@ services:
 
     environment:
       # Config overrides use ZEROCLAW_<dotted__path>=<value>.
-      # Provider API key (keep the key itself in .env, gitignored), e.g.
-      #   - ZEROCLAW_providers__models__opencode__deepseek_flash__api_key=${PROVIDER_API_KEY:-}
+
+      # Provider API keys: one line per provider in config.toml
+      # ([providers.models.<provider>.<profile>]); copy it from the comment in
+      # providers/<provider>.<profile>/provider.toml. The key goes in .env as
+      # <PROVIDER>_API_KEY (shared by that provider's profiles). `:?` stops
+      # compose when it's unset instead of overriding a stored key with "".
+      - ZEROCLAW_providers__models__opencode__deepseek_flash__api_key=${OPENCODE_API_KEY:?set OPENCODE_API_KEY in .env}
 
       # With host networking the gateway binds straight onto the host.
       # Keep it on loopback; switch to 0.0.0.0 (and set allow_public_bind=true,

@@ -3,7 +3,7 @@
 #   docker compose up -d
 #   Gateway: http://127.0.0.1:42617
 #
-# No model provider is configured yet (see the environment section below).
+# Provider API keys come from .env (gitignored), e.g. OPENCODE_API_KEY=...
 #
 # Uses host networking, so the container shares the host's network stack:
 # ZeroClaw can reach anything on the host directly (e.g. the class-admin MCP
@@ -27,10 +27,16 @@ services:
 
     environment:
       # Config overrides use ZEROCLAW_<dotted__path>=<value>.
-      # Provider: not configured yet. Add e.g.
-      #   - ZEROCLAW_providers__models__<provider>__default__api_key=${..._API_KEY:-}
-      #   - ZEROCLAW_providers__models__<provider>__default__model=<model>
-      # with the key itself in .env (gitignored).
+
+      # Provider API keys, one line per provider in config.toml
+      # ([providers.models.<provider>.<profile>] ->
+      #  ZEROCLAW_providers__models__<provider>__<profile>__api_key).
+      # The key itself lives in .env as <PROVIDER>_API_KEY; profiles of the
+      # same provider share it. Copy the line from the provider.toml comment
+      # (zeroclaw/providers/<provider>.<profile>/provider.toml).
+      # `:?` stops compose if the variable is unset/empty, rather than
+      # silently overriding a key stored in config.toml with "".
+      - ZEROCLAW_providers__models__opencode__deepseek_flash__api_key=${OPENCODE_API_KEY:?set OPENCODE_API_KEY in .env}
 
       # With host networking the gateway binds straight onto the host.
       # Keep it on loopback; switch to 0.0.0.0 (and set allow_public_bind=true,

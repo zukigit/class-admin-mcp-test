@@ -87,10 +87,25 @@ You can install the same folders into as many data dirs or projects as you like.
 
 ## API keys
 
-API keys are never stored in the kit. Pass them through the project's `docker-compose.yml` plus `.env`:
+API keys are never stored in the kit. Each provider's key comes from an
+environment variable in the project's `docker-compose.yml`, and the value
+lives in `.env` (gitignored). The variable is named after the provider id
+(`opencode.*` → `OPENCODE_API_KEY`), so all profiles of one provider share it.
 
 ```yaml
-- ZEROCLAW_providers__models__opencode__deepseek_flash__api_key=${PROVIDER_API_KEY:-}
+# docker-compose.yml, zeroclaw service
+environment:
+  - ZEROCLAW_providers__models__opencode__deepseek_flash__api_key=${OPENCODE_API_KEY:?set OPENCODE_API_KEY in .env}
+```
+```bash
+# .env
+OPENCODE_API_KEY=...
 ```
 
-Or enter the key in the dashboard, where ZeroClaw stores it encrypted with its own `.secret_key`.
+`new.sh provider <provider>.<profile>` prints the exact line for the new
+provider, and its `provider.toml` repeats it in a comment. Add one line per
+provider you install. `:?` makes compose stop when the variable is
+missing, instead of overriding a key stored in `config.toml` with `""`.
+
+You can also enter the key in the dashboard instead, where ZeroClaw stores it
+encrypted with its own `.secret_key`.

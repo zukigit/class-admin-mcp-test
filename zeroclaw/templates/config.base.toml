@@ -4,10 +4,8 @@ schema_version = 4
 # install.sh uses this only when the --data dir has no
 # .zeroclaw/config.toml yet.
 #
-# No credentials here. Supply the provider API key at runtime, e.g. in
-# docker-compose.yml:
-#   - ZEROCLAW_providers__models__opencode__deepseek_flash__api_key=${PROVIDER_API_KEY:-}
-# with PROVIDER_API_KEY in .env (gitignored).
+# No credentials here. Provider API keys are passed at runtime via
+# docker-compose.yml + .env; see the comment in each provider.toml.
 
 [tools]
 optional = ["*"]

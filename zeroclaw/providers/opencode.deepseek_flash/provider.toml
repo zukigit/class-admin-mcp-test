@@ -4,9 +4,11 @@
 # `[provider]` becomes `[providers.models.<provider>.<profile>]` in ZeroClaw's
 # config.toml. Agents select it with `model_provider = "<provider>.<profile>"`.
 #
-# NEVER put api_key here. Supply it at runtime, e.g. in docker-compose.yml:
-#   - ZEROCLAW_providers__models__opencode__deepseek_flash__api_key=${PROVIDER_API_KEY:-}
-# with PROVIDER_API_KEY in .env (gitignored), or enter it in the dashboard.
+# NEVER put api_key here. Supply it at runtime: add this line to the
+# zeroclaw service's environment in docker-compose.yml
+#   - ZEROCLAW_providers__models__opencode__deepseek_flash__api_key=${OPENCODE_API_KEY:?set OPENCODE_API_KEY in .env}
+# and put OPENCODE_API_KEY=<key> in .env (gitignored). All profiles of the same
+# provider share that variable. Or enter the key in the dashboard instead.
 
 [provider]
 model = "deepseek-v4.1-flash"
