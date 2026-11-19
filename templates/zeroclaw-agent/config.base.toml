@@ -1,0 +1,87 @@
+schema_version = 4
+
+# Shared ZeroClaw settings: tools, runtime/risk profiles, model provider.
+# Only used when creating a fresh .zeroclaw/config.toml.
+#
+# No credentials here. Supply the provider API key at runtime, e.g. in
+# docker-compose.yml:
+#   - ZEROCLAW_providers__models__{{PROVIDER}}__{{PROVIDER_PROFILE}}__api_key=${PROVIDER_API_KEY:-}
+# with PROVIDER_API_KEY in .env (gitignored). ZeroClaw encrypts keys it
+# writes itself with .secret_key, which it creates on first run.
+
+[tools]
+optional = ["*"]
+
+[runtime_profiles]
+
+[runtime_profiles.default]
+agentic = false
+deferred_builtin_tools = false
+max_actions_per_hour = 20
+max_cost_per_day_cents = 500
+max_delegation_depth = 0
+max_tool_iterations = 0
+shell_timeout_secs = 60
+strict_tool_parsing = false
+
+[runtime_profiles.default.context_compression]
+enabled = false
+identifier_policy = "strict"
+max_passes = 3
+protect_first_n = 3
+protect_last_n = 4
+source_max_chars = 50000
+summary_max_chars = 4000
+threshold_ratio = 0.5
+timeout_secs = 60
+tool_result_retrim_chars = 2000
+
+[runtime_profiles.default.eval]
+enabled = false
+max_retries = 1
+min_quality_score = 0.5
+
+[runtime_profiles.default.history_pruning]
+collapse_tool_results = true
+enabled = false
+keep_recent = 4
+max_tokens = 8192
+
+[runtime_profiles.default.thinking]
+default_level = "medium"
+display = "off"
+native_thinking = false
+
+[runtime_profiles.default.tool_receipts]
+enabled = false
+inject_system_prompt = true
+show_in_response = false
+
+[risk_profiles]
+
+[risk_profiles.default]
+allowed_commands = ["git", "npm", "cargo", "ls", "cat", "grep", "find", "echo", "pwd", "wc", "head", "tail", "date", "df", "du", "uname", "uptime", "hostname", "python", "python3", "pip", "node", "free"]
+auto_approve = ["file_read", "memory_recall", "web_search_tool", "web_fetch", "calculator", "glob_search", "content_search", "image_info", "weather", "tool_search", "browser_open"]
+block_high_risk_commands = true
+forbidden_paths = ["/etc", "/root", "/home", "/usr", "/bin", "/sbin", "/lib", "/opt", "/boot", "/dev", "/proc", "/sys", "/var", "/tmp", "~/.ssh", "~/.gnupg", "~/.aws", "~/.config"]
+level = "supervised"
+require_approval_for_medium_risk = true
+workspace_only = true
+
+[risk_profiles.default.delegation_policy]
+mode = "forbidden"
+
+[providers]
+
+[providers.models]
+
+[providers.models.{{PROVIDER}}]
+
+[providers.models.{{PROVIDER}}.{{PROVIDER_PROFILE}}]
+model = "{{MODEL}}"
+# api_key: do not commit. Set via env var (see top of file) or the dashboard.
+
+[gateway]
+# paired_tokens are generated when devices pair with the gateway.
+
+[agents]

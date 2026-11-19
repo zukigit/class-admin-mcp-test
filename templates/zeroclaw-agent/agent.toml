@@ -1,0 +1,26 @@
+
+# --- agent: {{AGENT_NAME}} ---------------------------------------------------
+
+[agents.{{AGENT_NAME}}]
+acp_enable_mcp = false
+delegate_same_risk_profile = true
+enabled = true
+model_provider = "{{PROVIDER}}.{{PROVIDER_PROFILE}}"
+risk_profile = "default"
+runtime_profile = "default"
+
+[agents.{{AGENT_NAME}}.a2a]
+published = false
+
+[agents.{{AGENT_NAME}}.identity]
+format = "openclaw"
+
+[agents.{{AGENT_NAME}}.memory]
+backend = "sqlite"
+
+[agents.{{AGENT_NAME}}.precheck]
+enabled = true
+timeout_secs = 5
+
+[agents.{{AGENT_NAME}}.workspace]
+unrestricted_filesystem = false
