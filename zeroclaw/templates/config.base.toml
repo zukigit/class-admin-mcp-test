@@ -1,13 +1,13 @@
 schema_version = 4
 
-# Shared ZeroClaw settings: tools, runtime/risk profiles, model provider.
-# Only used when creating a fresh .zeroclaw/config.toml.
+# Shared ZeroClaw settings: tools, runtime/risk profiles, model providers.
+# scripts/install-agent.sh uses this only when the --data dir has no
+# .zeroclaw/config.toml yet.
 #
 # No credentials here. Supply the provider API key at runtime, e.g. in
 # docker-compose.yml:
-#   - ZEROCLAW_providers__models__{{PROVIDER}}__{{PROVIDER_PROFILE}}__api_key=${PROVIDER_API_KEY:-}
-# with PROVIDER_API_KEY in .env (gitignored). ZeroClaw encrypts keys it
-# writes itself with .secret_key, which it creates on first run.
+#   - ZEROCLAW_providers__models__opencode__deepseek_flash__api_key=${PROVIDER_API_KEY:-}
+# with PROVIDER_API_KEY in .env (gitignored).
 
 [tools]
 optional = ["*"]
@@ -75,13 +75,11 @@ mode = "forbidden"
 
 [providers.models]
 
-[providers.models.{{PROVIDER}}]
+[providers.models.opencode]
 
-[providers.models.{{PROVIDER}}.{{PROVIDER_PROFILE}}]
-model = "{{MODEL}}"
-# api_key: do not commit. Set via env var (see top of file) or the dashboard.
+[providers.models.opencode.deepseek_flash]
+model = "deepseek-v4.1-flash"
 
 [gateway]
-# paired_tokens are generated when devices pair with the gateway.
 
 [agents]
