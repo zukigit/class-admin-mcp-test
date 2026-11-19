@@ -1,9 +1,14 @@
 # ZeroClaw kit
 
-A portable folder for ZeroClaw agents, profiles and model providers. You can put it anywhere:
-inside a project, in your home dir, or in its own git repo. It never assumes
-where ZeroClaw's data lives. You pass that location with `--data` every time
-you install.
+A kit for creating ZeroClaw configs from templates and saving them for later
+use. Agents, risk profiles, runtime profiles and model providers each live in
+their own folder. You create them with `new.sh`, keep them in git, and
+install them into any ZeroClaw setup with `install.sh`, again and again
+across projects.
+
+The kit is portable. You can put it anywhere: inside a project, in your home
+dir, or in its own git repo. It never assumes where ZeroClaw's data lives;
+you pass that location with `--data` every time you install.
 
 ```
 <kit>/
