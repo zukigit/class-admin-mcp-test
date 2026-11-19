@@ -3,13 +3,10 @@
   "image": "docker.io/zukidocker/everything:rhel10",
   "remoteUser": "zuki",
 
-  "forwardPorts": [8080],
-  "portsAttributes": {
-    "8080": {
-      "label": "class-admin MCP",
-      "onAutoForward": "notify"
-    }
-  },
+  // Share the host's network stack: class-admin on 127.0.0.1:8080 here is
+  // the host's 127.0.0.1:8080, which the ZeroClaw container (also host
+  // networking) reaches directly. No port forwarding needed.
+  "runArgs": ["--network=host"],
 
   "mounts": [
     "source=${localEnv:HOME}/.ssh,target=/home/zuki/.ssh,type=bind,readonly",
