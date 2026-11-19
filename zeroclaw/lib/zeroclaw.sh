@@ -7,7 +7,7 @@
 #   agent     agents/<name>/               agent.toml            [agent]             [agents.<name>]
 #   risk      risk_profiles/<name>/        risk_profile.toml     [risk_profile]      [risk_profiles.<name>]
 #   runtime   runtime_profiles/<name>/     runtime_profile.toml  [runtime_profile]   [runtime_profiles.<name>]
-#   provider  providers/<prov>.<profile>/  provider.toml         [provider]          [providers.models.<prov>.<profile>]
+#   provider  providers/<type>.<alias>/    provider.toml         [provider]          [providers.models.<type>.<alias>]
 #
 # Installing renames the headers (sub-tables too, e.g. [agent.memory] ->
 # [agents.<name>.memory]) and appends them to ZeroClaw's config.toml.
@@ -30,14 +30,50 @@ zc_type() {
   T_DIR="$KIT/${T_TABLE%%.*}"   # providers.models -> providers/
 }
 
+# ZeroClaw's provider slots (<type> in providers.models.<type>.<alias>), from
+# docs.zeroclawlabs.ai providers/catalog. Unknown types only warn, since new
+# slots get added upstream.
+ZC_SLOTS=" ai21 aihubmix anthropic anyscale arcee astrai atlascloud atomic_chat
+  avian azure baichuan baseten bedrock cerebras cloudflare cohere copilot crusoe
+  custom deepinfra deepmyst deepseek doubao featherless fireworks friendli gemini
+  gemini_cli github_models glm grok_cli groq hailo_ollama huggingface hunyuan
+  hyperbolic inception kilo kilocli lambda_ai lepton litellm llamacpp lmstudio
+  manifest minimax mistral moonshot morph nearai nebius novita nscale nvidia
+  ollama openai opencode openrouter osaurus ovh perplexity qianfan qwen reka
+  sambanova sglang siliconflow stepfun synthetic telnyx together upstage venice
+  vercel vllm xai yi zai zerorouter "
+# Slots that normally need no API key: local servers, CLI logins, AWS chain.
+ZC_KEYLESS=" ollama hailo_ollama lmstudio llamacpp sglang vllm osaurus atomic_chat
+  gemini_cli grok_cli kilocli bedrock "
+zc_in_list() { [[ "$(tr -s ' \n' '  ' <<<" $2 ")" == *" $1 "* ]]; }
+
+# ZeroClaw's alias grammar (applies to every name in the config): lowercase
+# letters, digits and single underscores, starting and ending with a letter or
+# digit, 1-63 chars. Anything else is a load-time error in ZeroClaw.
+zc_valid_alias() { [[ "$1" =~ ^[a-z0-9]+(_[a-z0-9]+)*$ && ${#1} -le 63 ]]; }
+
 # zc_check_name <name>: validate a name for the current type
 zc_check_name() {
+  local rule="lowercase letters, digits and single underscores (no '-' or '__'), max 63"
   if [[ "$T_KIND" == provider ]]; then
-    [[ "$1" =~ ^[a-z0-9_-]+\.[a-z0-9_-]+$ ]] \
-      || zc_die "provider name must be <provider>.<profile> (e.g. opencode.deepseek_flash): $1"
+    [[ "$1" == *.* && "${1#*.}" != *.* ]] \
+      || zc_die "provider name must be <type>.<alias> (e.g. opencode.deepseek_flash): $1"
+    local type="${1%%.*}" alias="${1#*.}"
+    zc_valid_alias "$type"  || zc_die "provider type '$type': $rule"
+    zc_valid_alias "$alias" || zc_die "provider alias '$alias': $rule"
+    zc_in_list "$type" "$ZC_SLOTS" \
+      || echo "warning: '$type' is not a known ZeroClaw provider type (see docs: providers/catalog)" >&2
   else
-    [[ "$1" =~ ^[a-z0-9_-]+$ ]] || zc_die "name must be lowercase letters, digits, _ or -: $1"
+    zc_valid_alias "$1" || zc_die "name '$1': $rule"
   fi
+}
+
+# zc_key_var <type> <alias>: .env variable for a provider's API key.
+# Named after the type so its aliases share one key (OPENAI_API_KEY, ...);
+# `custom` gateways are unrelated services, so they get one per alias.
+zc_key_var() {
+  local t="${1^^}" a="${2^^}"
+  if [[ "$1" == custom ]]; then echo "CUSTOM_${a}_API_KEY"; else echo "${t}_API_KEY"; fi
 }
 
 # zc_detect <folder> -> sets T_* from whichever settings file the folder has
@@ -88,6 +124,9 @@ zc_install() {
   zc_check_name "$name"
   local kind="$T_KIND" header="$T_HEADER" table="$T_TABLE" file="$T_FILE"
 
+  if grep -q 'CHANGE_ME' "$src/$file"; then
+    zc_die "$src/$file still has CHANGE_ME placeholders; fill them in first"
+  fi
   if grep -qE '^[[:space:]]*api_key[[:space:]]*=' "$src/$file"; then
     echo "warning: $src/$file contains api_key; keep keys out of the kit (use env vars)" >&2
   fi

@@ -29,11 +29,11 @@ services:
       # Config overrides use ZEROCLAW_<dotted__path>=<value>.
 
       # Provider API keys, one line per provider in config.toml
-      # ([providers.models.<provider>.<profile>] ->
-      #  ZEROCLAW_providers__models__<provider>__<profile>__api_key).
-      # The key itself lives in .env as <PROVIDER>_API_KEY; profiles of the
-      # same provider share it. Copy the line from the provider.toml comment
-      # (zeroclaw/providers/<provider>.<profile>/provider.toml).
+      # ([providers.models.<type>.<alias>] ->
+      #  ZEROCLAW_providers__models__<type>__<alias>__api_key).
+      # The key itself lives in .env as <TYPE>_API_KEY; aliases of the
+      # same type share it. Copy the line from the provider.toml comment
+      # (zeroclaw/providers/<type>.<alias>/provider.toml).
       # `:?` stops compose if the variable is unset/empty, rather than
       # silently overriding a key stored in config.toml with "".
       - ZEROCLAW_providers__models__opencode__deepseek_flash__api_key=${OPENCODE_API_KEY:?set OPENCODE_API_KEY in .env}

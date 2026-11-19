@@ -14,7 +14,7 @@
 #           risk/runtime profiles it names from this kit if the config lacks
 #           them, and copies workspace/*.md to .zeroclaw/agents/<name>/workspace/.
 # Profile:  adds [risk_profiles.<name>] or [runtime_profiles.<name>].
-# Provider: adds [providers.models.<provider>.<profile>] (no api_key: use env).
+# Provider: adds [providers.models.<type>.<alias>] (no api_key: use env).
 #
 # --force replaces items already in the config (config.toml.bak is kept) and
 # overwrites agent workspace files, including MEMORY.md; memory DB and

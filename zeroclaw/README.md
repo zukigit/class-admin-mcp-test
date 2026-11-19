@@ -16,8 +16,8 @@ you install.
     risk_profile.toml             #   [risk_profile]  -> [risk_profiles.<name>]
   runtime_profiles/<name>/        # saved runtime profiles
     runtime_profile.toml          #   [runtime_profile] -> [runtime_profiles.<name>]
-  providers/<provider>.<profile>/ # saved model providers (no API keys)
-    provider.toml                 #   [provider]      -> [providers.models.<provider>.<profile>]
+  providers/<type>.<alias>/       # saved model providers (no API keys)
+    provider.toml                 #   [provider]      -> [providers.models.<type>.<alias>]
   templates/
     agent/  risk_profile/  runtime_profile/  provider/   # blank items, with defaults
     config.base.toml              # tools/gateway, used only if the data dir has no config yet
@@ -25,7 +25,10 @@ you install.
   docker-compose.example.yml      # ZeroClaw service to paste into a project's compose
 ```
 
-Every item is a folder, and the folder name is the item's name. Nothing in
+Every item is a folder, and the folder name is the item's name. Names
+follow ZeroClaw's alias rules: lowercase letters, digits and single
+underscores, 1–63 chars, with no `-` and no `__`. ZeroClaw refuses to load
+other names, so `new.sh` rejects them. Nothing in
 the kit holds credentials, so it is safe to commit or share.
 
 ## Create
@@ -36,7 +39,7 @@ KIT=/path/to/zeroclaw-kit
 $KIT/new.sh agent   agent1          # -> $KIT/agents/agent1/
 $KIT/new.sh risk    risk_profile1   # -> $KIT/risk_profiles/risk_profile1/
 $KIT/new.sh runtime fast            # -> $KIT/runtime_profiles/fast/
-$KIT/new.sh provider opencode.big   # -> $KIT/providers/opencode.big/
+$KIT/new.sh provider openai.work    # -> $KIT/providers/openai.work/
 ```
 
 Then edit the new folder. For an agent, that means `workspace/IDENTITY.md`,
@@ -44,7 +47,7 @@ Then edit the new folder. For an agent, that means `workspace/IDENTITY.md`,
 profiles in `agent.toml`:
 
 ```toml
-model_provider = "opencode.big"  # which model: providers/<provider>.<profile>
+model_provider = "openai.work"   # which model: providers/<type>.<alias>
 risk_profile = "risk_profile1"   # what it may do without asking: commands, paths, approvals
 runtime_profile = "default"      # how it runs: limits, context compression, thinking
 ```
@@ -52,9 +55,38 @@ runtime_profile = "default"      # how it runs: limits, context compression, thi
 The kit ships a `default` risk profile and a `default` runtime profile, both with ZeroClaw's default values, plus
 the `opencode.deepseek_flash` provider (`deepseek-v4.1-flash`).
 
-A provider's name is `<provider>.<profile>`. `<provider>` is the ZeroClaw
-provider id (e.g. `opencode`), and `<profile>` is any label you choose.
-`provider.toml` holds the model and other non-secret settings, never `api_key`.
+### Providers
+
+A provider's name is `<type>.<alias>`. `<type>` is one of ZeroClaw's provider
+slots, such as `openai`, `anthropic`, `openrouter`, `opencode`, `deepseek`,
+`gemini`, `ollama`, `azure`, `bedrock` or `custom`. There are 79 in total; see the
+[catalog](https://docs.zeroclawlabs.ai/master/en/providers/catalog.html).
+`<alias>` is any name you choose. You can have several aliases per type
+(`anthropic.personal`, `anthropic.work`).
+
+`provider.toml` takes any field that type supports. The template lists the
+common ones, and the catalog lists the type-specific ones. Examples:
+
+```toml
+[provider]                        # providers/ollama.home — local, no key
+model = "qwen3:8b"
+uri = "http://127.0.0.1:11434"
+
+[provider]                        # providers/azure.prod
+model = "gpt-5"
+resource = "myres"
+deployment = "gpt5"
+api_version = "2025-01-01"
+
+[provider]                        # providers/custom.my_gateway — any OpenAI-compatible endpoint
+model = "llama-4"
+uri = "https://gw.example.com/v1"
+[provider.extra_headers]
+X-Team = "ai"
+```
+
+A new provider starts with `model = "CHANGE_ME"`, and `install.sh` refuses
+to install it until you fill that in. The file never contains `api_key`, and
 `install.sh` warns if it finds one.
 
 ## Install
@@ -62,7 +94,7 @@ provider id (e.g. `opencode`), and `<profile>` is any label you choose.
 ```bash
 $KIT/install.sh --data ./zeroclaw-data $KIT/agents/agent1
 $KIT/install.sh --data ./zeroclaw-data $KIT/risk_profiles/strict $KIT/runtime_profiles/fast
-$KIT/install.sh --data ./zeroclaw-data $KIT/providers/opencode.big
+$KIT/install.sh --data ./zeroclaw-data $KIT/providers/openai.work
 docker compose restart zeroclaw
 ```
 
@@ -89,8 +121,12 @@ You can install the same folders into as many data dirs or projects as you like.
 
 API keys are never stored in the kit. Each provider's key comes from an
 environment variable in the project's `docker-compose.yml`, and the value
-lives in `.env` (gitignored). The variable is named after the provider id
-(`opencode.*` → `OPENCODE_API_KEY`), so all profiles of one provider share it.
+lives in `.env` (gitignored). The variable is named after the provider type
+(`opencode.*` → `OPENCODE_API_KEY`, `openai.*` → `OPENAI_API_KEY`), so all
+aliases of one type share it. The exception is `custom`, where each alias is
+a different service, so each gets its own (`custom.my_gateway` →
+`CUSTOM_MY_GATEWAY_API_KEY`). Rename the variable if two aliases need
+different keys, e.g. two OpenAI accounts.
 
 ```yaml
 # docker-compose.yml, zeroclaw service
@@ -102,9 +138,13 @@ environment:
 OPENCODE_API_KEY=...
 ```
 
-`new.sh provider <provider>.<profile>` prints the exact line for the new
+`new.sh provider <type>.<alias>` prints the exact line for the new
 provider, and its `provider.toml` repeats it in a comment. Add one line per
-provider you install. `:?` makes compose stop when the variable is
+provider, and only after it is installed: ZeroClaw aborts startup on a
+`ZEROCLAW_...` variable that doesn't match a path in the config. Local and
+CLI types (`ollama`, `lmstudio`, `llamacpp`, `vllm`, `sglang`, `gemini_cli`,
+`grok_cli`, ...) and `bedrock`, which uses the AWS credential chain, normally
+need no key, and `new.sh` says so. `:?` makes compose stop when the variable is
 missing, instead of overriding a key stored in `config.toml` with `""`.
 
 You can also enter the key in the dashboard instead, where ZeroClaw stores it
