@@ -4,3 +4,6 @@
 *.db-wal
 *.db-shm
 .env
+
+# ZeroClaw runtime data (keys, sessions, memory)]
+/zeroclaw-data

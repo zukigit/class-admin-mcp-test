@@ -1,0 +1,62 @@
+# ZeroClaw agent alongside the class-admin MCP server.
+#
+#   docker compose up -d
+#   Gateway: http://127.0.0.1:42617
+#
+# No model provider is configured yet (see the environment section below).
+#
+# Uses host networking, so the container shares the host's network stack:
+# ZeroClaw can reach anything on the host directly (e.g. the class-admin MCP
+# server at http://127.0.0.1:8080/mcp) and the gateway listens on the host
+# without a port mapping. Host networking works on Linux Docker/Podman hosts.
+
+services:
+  zeroclaw:
+    # Debian-based variant (bash, git, curl available to the agent)
+    image: ghcr.io/zeroclaw-labs/zeroclaw:debian
+    container_name: zeroclaw
+    restart: unless-stopped
+    network_mode: host
+    # Run as the host user so files in ./zeroclaw-data stay editable on the
+    # host (the image defaults to 65534). Override in .env if your ids differ.
+    user: "${ZEROCLAW_UID:-1000}:${ZEROCLAW_GID:-1000}"
+    # Rootless Podman: map the host user to the same uid inside the
+    # container; without this uid 1000 inside is a sub-uid on the host and
+    # cannot write ./zeroclaw-data. (Podman-only; remove for Docker.)
+    userns_mode: keep-id
+
+    environment:
+      # Config overrides use ZEROCLAW_<dotted__path>=<value>.
+      # Provider: not configured yet. Add e.g.
+      #   - ZEROCLAW_providers__models__<provider>__default__api_key=${..._API_KEY:-}
+      #   - ZEROCLAW_providers__models__<provider>__default__model=<model>
+      # with the key itself in .env (gitignored).
+
+      # With host networking the gateway binds straight onto the host.
+      # Keep it on loopback; switch to 0.0.0.0 (and set allow_public_bind=true,
+      # with pairing enabled) only if other machines must reach it.
+      - ZEROCLAW_gateway__host=127.0.0.1
+      - ZEROCLAW_gateway__port=${ZEROCLAW_GATEWAY_PORT:-42617}
+      # The bind mount hides the image's seeded config, so point the gateway
+      # at the bundled dashboard explicitly.
+      - ZEROCLAW_gateway__web_dist_dir=/usr/share/zeroclawlabs/web/dist
+
+    volumes:
+      # Bind-mounted from the host: config (.zeroclaw/config.toml), data,
+      # agent workspaces. HOME=/zeroclaw-data inside the container.
+      # Starts empty; ZeroClaw writes a default config on first run.
+      # :Z relabels the folder for SELinux (Fedora), otherwise access is denied.
+      - ./zeroclaw-data:/zeroclaw-data:Z
+
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 512M
+
+    healthcheck:
+      test: ["CMD", "zeroclaw", "status", "--format=exit-code"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
