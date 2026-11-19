@@ -1,0 +1,12 @@
+# Model provider. The folder name is the provider's name, written
+# `<provider>.<profile>`: <provider> is a ZeroClaw provider id (e.g. opencode)
+# and <profile> is any label you choose (e.g. deepseek_flash).
+# `[provider]` becomes `[providers.models.<provider>.<profile>]` in ZeroClaw's
+# config.toml. Agents select it with `model_provider = "<provider>.<profile>"`.
+#
+# NEVER put api_key here. Supply it at runtime, e.g. in docker-compose.yml:
+#   - ZEROCLAW_providers__models__{{NAME_ENV}}__api_key=${PROVIDER_API_KEY:-}
+# with PROVIDER_API_KEY in .env (gitignored), or enter it in the dashboard.
+
+[provider]
+model = "deepseek-v4.1-flash"

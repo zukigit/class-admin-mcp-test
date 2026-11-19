@@ -3,34 +3,41 @@
 # Every kit item is a folder whose name is the item's name, holding one
 # settings file with a name-free table header:
 #
-#   type     folder                    file                  header             config table
-#   agent    agents/<name>/            agent.toml            [agent]            [agents.<name>]
-#   risk     risk_profiles/<name>/     risk_profile.toml     [risk_profile]     [risk_profiles.<name>]
-#   runtime  runtime_profiles/<name>/  runtime_profile.toml  [runtime_profile]  [runtime_profiles.<name>]
+#   type      folder                       file                  header              config table
+#   agent     agents/<name>/               agent.toml            [agent]             [agents.<name>]
+#   risk      risk_profiles/<name>/        risk_profile.toml     [risk_profile]      [risk_profiles.<name>]
+#   runtime   runtime_profiles/<name>/     runtime_profile.toml  [runtime_profile]   [runtime_profiles.<name>]
+#   provider  providers/<prov>.<profile>/  provider.toml         [provider]          [providers.models.<prov>.<profile>]
 #
 # Installing renames the headers (sub-tables too, e.g. [agent.memory] ->
 # [agents.<name>.memory]) and appends them to ZeroClaw's config.toml.
 
 KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ZC_TYPES=(agent risk runtime)
+ZC_TYPES=(agent risk runtime provider)
 
 zc_die() { echo "$*" >&2; exit 1; }
 
-zc_check_name() {
-  [[ "$1" =~ ^[a-z0-9_-]+$ ]] || zc_die "name must be lowercase letters, digits, _ or -: $1"
-}
-
-# zc_type <agent|risk|runtime> -> T_HEADER, T_TABLE, T_FILE, T_DIR
+# zc_type <agent|risk|runtime|provider> -> T_KIND, T_HEADER, T_TABLE, T_FILE, T_DIR
 zc_type() {
   case "$1" in
-    agent|agents)                             T_HEADER=agent ;;
-    risk|risk_profile|risk_profiles)          T_HEADER=risk_profile ;;
-    runtime|runtime_profile|runtime_profiles) T_HEADER=runtime_profile ;;
+    agent|agents)                             T_KIND=agent;    T_HEADER=agent;           T_TABLE=agents ;;
+    risk|risk_profile|risk_profiles)          T_KIND=risk;     T_HEADER=risk_profile;    T_TABLE=risk_profiles ;;
+    runtime|runtime_profile|runtime_profiles) T_KIND=runtime;  T_HEADER=runtime_profile; T_TABLE=runtime_profiles ;;
+    provider|providers)                       T_KIND=provider; T_HEADER=provider;        T_TABLE=providers.models ;;
     *) zc_die "unknown type '$1' (use: ${ZC_TYPES[*]})" ;;
   esac
-  T_TABLE="${T_HEADER}s"
   T_FILE="$T_HEADER.toml"
-  T_DIR="$KIT/$T_TABLE"
+  T_DIR="$KIT/${T_TABLE%%.*}"   # providers.models -> providers/
+}
+
+# zc_check_name <name>: validate a name for the current type
+zc_check_name() {
+  if [[ "$T_KIND" == provider ]]; then
+    [[ "$1" =~ ^[a-z0-9_-]+\.[a-z0-9_-]+$ ]] \
+      || zc_die "provider name must be <provider>.<profile> (e.g. opencode.deepseek_flash): $1"
+  else
+    [[ "$1" =~ ^[a-z0-9_-]+$ ]] || zc_die "name must be lowercase letters, digits, _ or -: $1"
+  fi
 }
 
 # zc_detect <folder> -> sets T_* from whichever settings file the folder has
@@ -40,7 +47,7 @@ zc_detect() {
     zc_type "$t"
     [[ -f "$1/$T_FILE" ]] && return 0
   done
-  zc_die "not a kit folder (no agent.toml, risk_profile.toml or runtime_profile.toml): $1"
+  zc_die "not a kit folder (no agent.toml, risk_profile.toml, runtime_profile.toml or provider.toml): $1"
 }
 
 # zc_ensure_config <data-dir> -> sets CONFIG, creates it from the base if missing
@@ -53,14 +60,17 @@ zc_ensure_config() {
   fi
 }
 
+# zc_re <text>: escape dots for use in a regex
+zc_re() { printf '%s' "${1//./\\.}"; }
+
 # zc_has <table> <name>: is [<table>.<name>] in $CONFIG?
-zc_has() { grep -qE "^\[$1\.$2(\.|\])" "$CONFIG"; }
+zc_has() { grep -qE "^\[$(zc_re "$1.$2")(\.|\])" "$CONFIG"; }
 
 # zc_remove <table> <name>: drop [<table>.<name>] and its sub-tables from $CONFIG
 zc_remove() {
   cp "$CONFIG" "$CONFIG.bak"
-  awk -v t="$1" -v n="$2" '
-    /^\[/ { skip = ($0 ~ "^\\[" t "\\." n "(\\.|\\])") }
+  awk -v p="$(zc_re "$1.$2" | sed 's/\\/\\\\/g')" '
+    /^\[/ { skip = ($0 ~ "^\\[" p "(\\.|\\])") }
     !skip
   ' "$CONFIG.bak" > "$CONFIG"
   echo "removed old $1.$2 (backup: $CONFIG.bak)"
@@ -74,9 +84,13 @@ zc_install() {
   local src force="$2" name
   src="$(cd "$1" && pwd)"
   name="$(basename "$src")"
-  zc_check_name "$name"
   zc_detect "$src"
-  local header="$T_HEADER" table="$T_TABLE" file="$T_FILE"
+  zc_check_name "$name"
+  local kind="$T_KIND" header="$T_HEADER" table="$T_TABLE" file="$T_FILE"
+
+  if grep -qE '^[[:space:]]*api_key[[:space:]]*=' "$src/$file"; then
+    echo "warning: $src/$file contains api_key; keep keys out of the kit (use env vars)" >&2
+  fi
 
   if zc_has "$table" "$name"; then
     [[ "$force" -eq 1 ]] || zc_die "$table.$name is already installed; use --force to replace it"
@@ -90,30 +104,25 @@ zc_install() {
   } >> "$CONFIG"
   echo "added $table.$name"
 
-  [[ "$header" == agent ]] && zc_install_agent_extras "$src" "$name" "$force"
+  [[ "$kind" == agent ]] && zc_install_agent_extras "$src" "$name" "$force"
   return 0
 }
 
-# Agent-only steps: missing profiles it uses, provider check, workspace files.
+# Agent-only steps: missing provider/profiles it uses, workspace files.
 zc_install_agent_extras() {
-  local src="$1" name="$2" force="$3" kind profile f dest
-  for kind in risk runtime; do
+  local src="$1" name="$2" force="$3" kind key ref f dest
+  for kind in provider risk runtime; do
     zc_type "$kind"
-    profile="$(zc_value "$src/agent.toml" "$T_HEADER")"
-    [[ -n "$profile" ]] || continue
-    zc_has "$T_TABLE" "$profile" && continue
-    if [[ -f "$T_DIR/$profile/$T_FILE" ]]; then
-      zc_install "$T_DIR/$profile" 0
+    case "$kind" in provider) key=model_provider ;; *) key="$T_HEADER" ;; esac
+    ref="$(zc_value "$src/agent.toml" "$key")"
+    [[ -n "$ref" ]] || continue
+    zc_has "$T_TABLE" "$ref" && continue
+    if [[ -f "$T_DIR/$ref/$T_FILE" ]]; then
+      zc_install "$T_DIR/$ref" 0
     else
-      echo "warning: $T_TABLE.$profile is not in the config or the kit" >&2
+      echo "warning: $key '$ref' is not in the config or the kit ($T_DIR/$ref)" >&2
     fi
   done
-
-  local provider
-  provider="$(zc_value "$src/agent.toml" model_provider)"
-  if [[ -n "$provider" ]] && ! grep -qF "[providers.models.$provider]" "$CONFIG"; then
-    echo "warning: provider '$provider' is not defined in $CONFIG" >&2
-  fi
 
   local ws
   ws="$(dirname "$CONFIG")/agents/$name/workspace"

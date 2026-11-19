@@ -1,8 +1,9 @@
 # Agent settings. The agent's name is its folder name.
 # `[agent]` becomes `[agents.<folder-name>]` in ZeroClaw's config.toml.
 #
-# model_provider must name a provider in ZeroClaw's config
-# (templates/config.base.toml in the kit ships `opencode.deepseek_flash`).
+# model_provider, risk_profile and runtime_profile name items in the kit
+# (providers/, risk_profiles/, runtime_profiles/) or already in the config;
+# install.sh adds missing ones from the kit.
 # No API keys here: see README.md.
 
 [agent]

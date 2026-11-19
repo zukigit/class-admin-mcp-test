@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install kit folders into a ZeroClaw data dir. The type is detected from the
-# folder (agent.toml / risk_profile.toml / runtime_profile.toml).
+# folder (agent.toml / risk_profile.toml / runtime_profile.toml / provider.toml).
 #
 #   ./install.sh --data <zeroclaw-data> agents/agent1
 #   ./install.sh --data <zeroclaw-data> risk_profiles/strict runtime_profiles/fast
@@ -10,15 +10,17 @@
 # container (it holds, or will hold, .zeroclaw/config.toml). If there's no
 # config yet, it is created from templates/config.base.toml.
 #
-# Agent:   adds [agents.<name>] to config.toml, installs the risk/runtime
-#          profiles it names from this kit if the config lacks them, and copies
-#          workspace/*.md to .zeroclaw/agents/<name>/workspace/.
-# Profile: adds [risk_profiles.<name>] or [runtime_profiles.<name>].
+# Agent:    adds [agents.<name>] to config.toml, installs the provider and
+#           risk/runtime profiles it names from this kit if the config lacks
+#           them, and copies workspace/*.md to .zeroclaw/agents/<name>/workspace/.
+# Profile:  adds [risk_profiles.<name>] or [runtime_profiles.<name>].
+# Provider: adds [providers.models.<provider>.<profile>] (no api_key: use env).
 #
 # --force replaces items already in the config (config.toml.bak is kept) and
 # overwrites agent workspace files, including MEMORY.md; memory DB and
-# sessions are kept. Profiles pulled in by an agent are never replaced, since
-# other agents may share them; install them explicitly with --force for that.
+# sessions are kept. Providers/profiles pulled in by an agent are never
+# replaced, since other agents may share them; install them explicitly with
+# --force for that.
 #
 # Afterwards restart ZeroClaw, e.g. docker compose restart zeroclaw
 set -euo pipefail

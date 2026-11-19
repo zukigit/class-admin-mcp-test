@@ -1,6 +1,6 @@
 schema_version = 4
 
-# Shared ZeroClaw settings: tools, model providers, gateway.
+# Shared ZeroClaw settings: tools, gateway.
 # install.sh uses this only when the --data dir has no
 # .zeroclaw/config.toml yet.
 #
@@ -15,14 +15,7 @@ optional = ["*"]
 # Risk and runtime profiles live in the kit (risk_profiles/, runtime_profiles/)
 # and are added by install.sh.
 
-[providers]
-
-[providers.models]
-
-[providers.models.opencode]
-
-[providers.models.opencode.deepseek_flash]
-model = "deepseek-v4.1-flash"
+# Model providers live in the kit (providers/) and are added by install.sh.
 
 [gateway]
 
