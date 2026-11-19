@@ -1,5 +1,5 @@
 # Runtime profile: how an agent runs (limits, context handling, thinking).
-# The profile's name is this file's name. `[runtime_profile]` becomes
+# The profile's name is its folder's name. `[runtime_profile]` becomes
 # `[runtime_profiles.<name>]` in ZeroClaw's config.toml. Agents select it
 # with `runtime_profile = "<name>"`. Values below are ZeroClaw's defaults.
 

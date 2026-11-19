@@ -1,4 +1,4 @@
-# AGENTS.md — {{AGENT_NAME}} Personal Assistant
+# AGENTS.md — {{NAME}} Personal Assistant
 
 ## Every Session (required)
 

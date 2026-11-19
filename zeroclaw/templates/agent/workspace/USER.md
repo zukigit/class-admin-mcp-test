@@ -1,6 +1,6 @@
 # USER.md — Who You're Helping
 
-*{{AGENT_NAME}} reads this file every session to understand you.*
+*{{NAME}} reads this file every session to understand you.*
 
 ## About You
 - **Name:** User
@@ -17,4 +17,4 @@
 - (Add your work context here — e.g. building a SaaS product)
 
 ---
-*Update this anytime. The more {{AGENT_NAME}} knows, the better it helps.*
+*Update this anytime. The more {{NAME}} knows, the better it helps.*

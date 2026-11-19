@@ -1,6 +1,6 @@
 # Example ZeroClaw service. Copy into your project's docker-compose.yml
 # Point the volume at your ZeroClaw data dir, and pass the same dir to
-# scripts/install-agent.sh --data.
+# install.sh --data.
 #
 #   docker compose up -d
 #   Gateway: http://127.0.0.1:42617

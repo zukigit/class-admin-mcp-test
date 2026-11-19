@@ -1,5 +1,5 @@
 # Risk profile: what an agent may do without asking. The profile's name is
-# this file's name. `[risk_profile]` becomes `[risk_profiles.<name>]` in
+# its folder's name. `[risk_profile]` becomes `[risk_profiles.<name>]` in
 # ZeroClaw's config.toml. Agents select it with `risk_profile = "<name>"`.
 # Values below are ZeroClaw's defaults.
 
