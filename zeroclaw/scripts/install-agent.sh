@@ -14,21 +14,20 @@
 # The agent is named after its folder. This
 #   - adds its settings from agent.toml to <data>/.zeroclaw/config.toml
 #     (creating that file from templates/config.base.toml if it is missing)
+#   - installs the risk_profile / runtime_profile it names from the kit,
+#     if the config doesn't have them yet (existing profiles are left alone)
 #   - copies workspace/*.md to <data>/.zeroclaw/agents/<name>/workspace/
 #
 # --force replaces the agent's config sections and overwrites its workspace
 # files (including MEMORY.md the agent may have edited); its memory database
-# and sessions are kept.
+# and sessions are kept. Profiles are shared between agents, so --force does
+# not touch them; use install-profile.sh --force for that.
 #
 # Afterwards restart ZeroClaw, e.g. docker compose restart zeroclaw
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
-usage() {
-  echo "usage: $0 --data <zeroclaw-data-dir> <agent-name|agent-folder> [--force]" >&2
-  exit 1
-}
+usage() { zc_die "usage: $0 --data <zeroclaw-data-dir> <agent-name|agent-folder> [--force]"; }
 
 SRC=""; DATA_DIR=""; FORCE=0
 while [[ $# -gt 0 ]]; do
@@ -42,54 +41,36 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 [[ -n "$SRC" && -n "$DATA_DIR" ]] || usage
-mkdir -p "$DATA_DIR"
-DATA_DIR="$(cd "$DATA_DIR" && pwd)"
 
 [[ -d "$SRC" ]] || SRC="$KIT/agents/$SRC"
-if [[ ! -f "$SRC/agent.toml" ]]; then
-  echo "not an agent folder (no agent.toml): $SRC" >&2
-  exit 1
-fi
+[[ -f "$SRC/agent.toml" ]] || zc_die "not an agent folder (no agent.toml): $SRC"
 SRC="$(cd "$SRC" && pwd)"
 NAME="$(basename "$SRC")"
-if [[ ! "$NAME" =~ ^[a-z0-9_-]+$ ]]; then
-  echo "folder name must be lowercase letters, digits, _ or -: $NAME" >&2
-  exit 1
+zc_check_name "$NAME"
+
+zc_ensure_config "$DATA_DIR"
+WORKSPACE="$(dirname "$CONFIG")/agents/$NAME/workspace"
+
+if zc_has "$CONFIG" agents "$NAME"; then
+  [[ $FORCE -eq 1 ]] || zc_die "agent '$NAME' is already installed; use --force to reinstall"
+  zc_remove "$CONFIG" agents "$NAME"
 fi
+zc_append "$CONFIG" "$SRC/agent.toml" agent agents "$NAME"
 
-ZC_DIR="$DATA_DIR/.zeroclaw"
-CONFIG="$ZC_DIR/config.toml"
-WORKSPACE="$ZC_DIR/agents/$NAME/workspace"
-
-mkdir -p "$ZC_DIR"
-if [[ ! -f "$CONFIG" ]]; then
-  cp "$KIT/templates/config.base.toml" "$CONFIG"
-  echo "created $CONFIG from templates/config.base.toml"
-fi
-
-if grep -qE "^\[agents\.$NAME(\.|\])" "$CONFIG"; then
-  if [[ $FORCE -eq 0 ]]; then
-    echo "agent '$NAME' is already installed; use --force to reinstall" >&2
-    exit 1
+# Profiles the agent refers to: install from the kit if missing.
+for kind in risk runtime; do
+  zc_kind "$kind"
+  profile="$(zc_value "$SRC/agent.toml" "$KIND_HEADER")"
+  [[ -n "$profile" ]] || continue
+  zc_has "$CONFIG" "$KIND_TABLE" "$profile" && continue
+  if [[ -f "$KIT/$KIND_TABLE/$profile.toml" ]]; then
+    zc_install_profile "$CONFIG" "$kind" "$profile" 0
+  else
+    echo "warning: $KIND_TABLE.$profile is not in the config or the kit" >&2
   fi
-  # Drop every [agents.<name>] / [agents.<name>.*] table.
-  cp "$CONFIG" "$CONFIG.bak"
-  awk -v n="$NAME" '
-    /^\[/ { skip = ($0 ~ "^\\[agents\\." n "(\\.|\\])") }
-    !skip
-  ' "$CONFIG.bak" > "$CONFIG"
-  echo "removed old '$NAME' settings (backup: $CONFIG.bak)"
-fi
+done
 
-# Rename [agent...] tables to [agents.<name>...], drop comments, append.
-{
-  echo
-  echo "# --- agent: $NAME ---"
-  sed -E -e '/^[[:space:]]*#/d' -e "s/^\[agent(\.|\])/[agents.$NAME\1/" "$SRC/agent.toml"
-} >> "$CONFIG"
-echo "added agent '$NAME' to $CONFIG"
-
-PROVIDER="$(sed -nE 's/^model_provider *= *"([^"]+)".*/\1/p' "$SRC/agent.toml" | head -1)"
+PROVIDER="$(zc_value "$SRC/agent.toml" model_provider)"
 if [[ -n "$PROVIDER" ]] && ! grep -qF "[providers.models.$PROVIDER]" "$CONFIG"; then
   echo "warning: provider '$PROVIDER' is not defined in $CONFIG" >&2
 fi
