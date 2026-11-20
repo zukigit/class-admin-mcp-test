@@ -1,36 +1,24 @@
-# TOOLS.md — Local Notes
+# TOOLS.md — Your Tools
 
-Skills define HOW tools work. This file is for YOUR specifics —
-the stuff that's unique to your setup.
+These are your only tools. They come from the school's public booking
+system and are named `class_admin_public__<tool>`.
 
-## What Goes Here
+| Tool | Use it to | Needs |
+|---|---|---|
+| `list_courses` | list the courses the school teaches | optional `level` (e.g. "beginner") |
+| `get_course` | one course and its upcoming classes | `code` (e.g. "PY-BASICS") |
+| `list_upcoming_classes` | find classes | optional `course_code`, `day_of_week` (1 = Mon … 7 = Sun), `from_date` / `to_date` (YYYY-MM-DD), `only_available`, `max_fee_cents` |
+| `get_class` | one class: dates, times, fee, spots left | `code` (e.g. "PY-BASICS-2027-01") |
+| `book_class` | book a seat for the whole term | `class_code`, the attendee's own `name` and `email` |
+| `get_booking` | check a booking's status | `reference` and `cancel_code` |
+| `cancel_booking` | cancel a booking before the class starts | `reference` and `cancel_code` |
+| `whoami` | (rarely needed) check the connection | — |
 
-Things like:
-- SSH hosts and aliases
-- Device nicknames
-- Preferred voices for TTS
-- Anything environment-specific
+Notes:
 
-## Built-in Tools
-
-- **shell** — Execute terminal commands
-  - Use when: running local checks, build/test commands, or diagnostics.
-  - Don't use when: a safer dedicated tool exists, or command is destructive without approval.
-- **file_read** — Read file contents
-  - Use when: inspecting project files, configs, or logs.
-  - Don't use when: you only need a quick string search (prefer targeted search first).
-- **file_write** — Write file contents
-  - Use when: applying focused edits, scaffolding files, or updating docs/code.
-  - Don't use when: unsure about side effects or when the file should remain user-owned.
-- **memory_store** — Save to memory
-  - Use when: preserving durable preferences, decisions, or key context.
-  - Don't use when: info is transient, noisy, or sensitive without explicit need.
-- **memory_recall** — Search memory
-  - Use when: you need prior decisions, user preferences, or historical context.
-  - Don't use when: the answer is already in current files/conversation.
-- **memory_forget** — Delete a memory entry
-  - Use when: memory is incorrect, stale, or explicitly requested to be removed.
-  - Don't use when: uncertain about impact; verify before deleting.
-
----
-*Add whatever helps you do your job. This is your cheat sheet.*
+- Fees are in USD cents. Show dollars: `12000` → `$120.00`. To filter by fee,
+  convert: "under $150" → `max_fee_cents = 15000`.
+- Booking is rate-limited per visitor, and an email can have only a few
+  pending bookings. If a booking is refused for this, say so plainly.
+- `book_class` and `cancel_booking` ask the customer for approval before they
+  run. That is expected.
